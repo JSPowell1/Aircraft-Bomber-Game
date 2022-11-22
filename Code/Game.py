@@ -13,22 +13,34 @@ from pygame.locals import (
     K_DOWN,
     K_LEFT,
     K_RIGHT,
+    K_SPACE,
     K_ESCAPE,
     KEYDOWN,
     QUIT,
 )
 
-# Define constants for the screen width and height
-SCREEN_WIDTH = 800
-SCREEN_HEIGHT = 600
+# Create the screen object
+# The size is determined by the constant SCREEN_WIDTH and SCREEN_HEIGHT
+pygame.display.set_caption("Aircraft Bomber")
+screen = pygame.display.set_mode((0,0),pygame.FULLSCREEN)
 
-# Define the Player object extending pygame.sprite.Sprite
+# Define constants for the screen width and height
+SCREEN_WIDTH = screen.get_width()
+SCREEN_HEIGHT = screen.get_height()
+# Define constants for colours
+BLACK = (0,0,0)
+WHITE = (255,255,255)
+BLUE = (135, 206, 250)
+#Acceleration due to gravity
+ACCELERATION = 9.80665
+
+# Define the Aircraft object extending pygame.sprite.Sprite
 # Instead of a surface, we use an image for a better looking sprite
-class Player(pygame.sprite.Sprite):
+class Aircraft(pygame.sprite.Sprite):
     def __init__(self):
-        super(Player, self).__init__()
+        super(Aircraft, self).__init__()
         self.surf = pygame.image.load("aircraft.png").convert()
-        self.surf.set_colorkey((255, 255, 255), RLEACCEL)
+        self.surf.set_colorkey((WHITE), RLEACCEL)
         self.rect = self.surf.get_rect()
 
     # Move the sprite based on keypresses
@@ -44,7 +56,7 @@ class Player(pygame.sprite.Sprite):
         if pressed_keys[K_RIGHT]:
             self.rect.move_ip(5, 0)
 
-        # Keep player on the screen
+        # Keep aircraft on the screen
         if self.rect.left < 0:
             self.rect.left = 0
         elif self.rect.right > SCREEN_WIDTH:
@@ -61,7 +73,7 @@ class Enemy(pygame.sprite.Sprite):
     def __init__(self):
         super(Enemy, self).__init__()
         self.surf = pygame.image.load("missile.png").convert()
-        self.surf.set_colorkey((255, 255, 255), RLEACCEL)
+        self.surf.set_colorkey((WHITE), RLEACCEL)
         # The starting position is randomly generated, as is the speed
         self.rect = self.surf.get_rect(
             center=(
@@ -78,13 +90,51 @@ class Enemy(pygame.sprite.Sprite):
         if self.rect.right < 0:
             self.kill()
 
+# Define the bomb object extending pygame.sprite.Sprite
+# Instead of a surface, we use an image for a better looking sprite
+class Bomb(pygame.sprite.Sprite):
+    def __init__(self, velocity = (0,0)):
+        super(Bomb, self).__init__()
+        self.surf = pygame.image.load("Bomb.png").convert()
+        self.surf.set_colorkey((WHITE), RLEACCEL)
+        self.velocity = velocity
+        # The starting position is randomly generated, as is the speed
+        self.rect = self.surf.get_rect(
+            center=(
+                (aircraft.rect.x + 20),
+                (aircraft.rect.y + 20),
+            )
+        )
+        self.on_ground = False
+
+    def update(self):
+        self.rect.x = self.rect.x + self.velocity[0]
+        self.rect.y = self.rect.y + self.velocity[1]
+        
+        if not self.on_ground:
+            # do gravity
+            current_x_vel = self.velocity[0]
+            current_y_vel = self.velocity[1]
+            y_vel = current_y_vel + ACCELERATION
+            self.velocity = (current_x_vel, y_vel)
+        #self.speed = ACCELERATION
+
+    # Move the enemy based on speed
+    # Remove it when it passes the left edge of the screen
+    #def update(self):
+    #    self.rect.move_ip(0,self.speed)
+    #    if self.rect.bottomleft[1] >= SCREEN_HEIGHT:
+    #        self.kill()
+        #self.rect.x = self.rect.x + self.velocity[0]
+        #self.rect.y = self.rect.y + self.velocity[1]
+
 # Define the target object extending pygame.sprite.Sprite
 # Instead of a surface, we use an image for a better looking sprite
 class Target(pygame.sprite.Sprite):
     def __init__(self):
         super(Target, self).__init__()
-        self.surf = pygame.image.load("Target.png").convert()
-        self.surf.set_colorkey((255, 255, 255), RLEACCEL)
+        self.surf = pygame.image.load("Target1.png").convert()
+        self.surf.set_colorkey((BLACK), RLEACCEL)
         # The starting position is randomly generated, as is the speed
         self.rect = self.surf.get_rect(
             center=(
@@ -107,7 +157,7 @@ class Cloud(pygame.sprite.Sprite):
     def __init__(self):
         super(Cloud, self).__init__()
         self.surf = pygame.image.load("cloud.png").convert()
-        self.surf.set_colorkey((0, 0, 0), RLEACCEL)
+        self.surf.set_colorkey((BLACK), RLEACCEL)
         # The starting position is randomly generated
         self.rect = self.surf.get_rect(
             center=(
@@ -130,7 +180,7 @@ class Landscape(pygame.sprite.Sprite):
     def __init__(self):
         super(Landscape, self).__init__()
         self.surf = pygame.image.load("Landscape.png").convert()
-        self.surf.set_colorkey((0, 0, 0), RLEACCEL)
+        self.surf.set_colorkey((WHITE), RLEACCEL)
         # The starting position is randomly generated
         self.rect = self.surf.get_rect(
             center=(
@@ -157,21 +207,18 @@ pygame.init()
 # Setup the clock for a decent framerate
 clock = pygame.time.Clock()
 
-# Create the screen object
-# The size is determined by the constant SCREEN_WIDTH and SCREEN_HEIGHT
-pygame.display.set_caption("Game")
-screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
-
 # Create custom events for adding a new enemy and cloud
 ADDENEMY = pygame.USEREVENT + 1
 pygame.time.set_timer(ADDENEMY, 250)
-ADDTARGET = pygame.USEREVENT + 2
+ADDBOMB = pygame.USEREVENT + 2
+pygame.time.set_timer(ADDBOMB, 250)
+ADDTARGET = pygame.USEREVENT + 3
 pygame.time.set_timer(ADDTARGET, 1000)
 '''ADDCLOUD = pygame.USEREVENT + 2
 pygame.time.set_timer(ADDCLOUD, 1000)
 '''
-# Create our 'player'
-player = Player()
+# Create our 'aircraft'
+aircraft = Aircraft()
 
 landscape = Landscape()
 
@@ -181,9 +228,10 @@ landscape = Landscape()
 # - all_sprites isused for rendering
 #enemies = pygame.sprite.Group()
 targets = pygame.sprite.Group()
-'''clouds = pygame.sprite.Group()'''
+bombs = pygame.sprite.Group()
+#clouds = pygame.sprite.Group()
 all_sprites = pygame.sprite.Group()
-all_sprites.add(player)
+all_sprites.add(aircraft)
 #all_sprites.add(landscape)
 
 # Load and play our background music
@@ -206,6 +254,8 @@ collision_sound.set_volume(0.5)'''
 # Variable to keep our main loop running
 running = True
 
+counter = 0
+
 # Our main loop
 while running:
     # Look at every event in the queue
@@ -215,6 +265,10 @@ while running:
             # Was it the Escape key? If so, stop the loop
             if event.key == K_ESCAPE:
                 running = False
+            elif event.key == K_SPACE:
+                new_bomb = Bomb()
+                bombs.add(new_bomb)
+                all_sprites.add(new_bomb)
 
         # Did the user click the window close button? If so, stop the loop
         elif event.type == QUIT:
@@ -226,6 +280,20 @@ while running:
         #    new_enemy = Enemy()
         #    enemies.add(new_enemy)
         #    all_sprites.add(new_enemy)
+        
+        # Should we add a new bomb?
+        #elif event.type == ADDBOMB:
+        #    # Create the new bomb, and add it to our sprite groups
+        #    new_bomb = Bomb()
+        #    bombs.add(new_bomb)
+        #    all_sprites.add(new_bomb)
+
+        #elif event.type == KEYDOWN:
+        #    # Create the new bomb, and add it to our sprite groups
+        #    if event.key == K_SPACE:
+        #        new_bomb = Bomb()
+        #        bombs.add(new_bomb)
+        #        all_sprites.add(new_bomb)
 
             # Should we add a new target?
         elif event.type == ADDTARGET:
@@ -241,14 +309,15 @@ while running:
             new_cloud = Cloud()
             clouds.add(new_cloud)
             all_sprites.add(new_cloud)'''
-
+  
     # Get the set of keys pressed and check for user input
     pressed_keys = pygame.key.get_pressed()
-    player.update(pressed_keys)
+    aircraft.update(pressed_keys)
 
     # Update the position of our enemies and clouds
     #enemies.update()
     targets.update()
+    bombs.update()
     '''clouds.update()'''
     '''if pygame.sprite.Sprite.alive(landscape) == True:
          landscape.update()
@@ -257,16 +326,15 @@ while running:
         all_sprites.add(landscape)'''
 
     # Fill the screen with sky blue
-    screen.fill((135, 206, 250))
-    pygame.draw.circle(screen, (0,0,0), (250,250), 5)
+    screen.fill(BLUE)
     # Draw all our sprites
     for entity in all_sprites:
         screen.blit(entity.surf, entity.rect)
 
-    ''' # Check if any enemies have collided with the player
-    if pygame.sprite.spritecollideany(player, enemies):
-        # If so, remove the player
-        player.kill()
+    ''' # Check if any enemies have collided with the aircraft
+    if pygame.sprite.spritecollideany(aircraft, enemies):
+        # If so, remove the aircraft
+        aircraft.kill()
 
         # Stop any moving sounds and play the collision sound
         move_up_sound.stop()
@@ -275,6 +343,16 @@ while running:
 
         # Stop the loop
         running = False'''
+    
+    # Check if any bombs have hit the targets
+    if pygame.sprite.groupcollide():
+        # If so, remove the target
+        targets.kill()
+
+    counter += 1
+    if counter %100 == 0:
+        print(aircraft.rect.x)
+        print(aircraft.rect.y)
 
     # Flip everything to the display
     pygame.display.flip()
