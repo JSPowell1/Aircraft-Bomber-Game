@@ -281,21 +281,7 @@ while running:
         #    enemies.add(new_enemy)
         #    all_sprites.add(new_enemy)
         
-        # Should we add a new bomb?
-        #elif event.type == ADDBOMB:
-        #    # Create the new bomb, and add it to our sprite groups
-        #    new_bomb = Bomb()
-        #    bombs.add(new_bomb)
-        #    all_sprites.add(new_bomb)
-
-        #elif event.type == KEYDOWN:
-        #    # Create the new bomb, and add it to our sprite groups
-        #    if event.key == K_SPACE:
-        #        new_bomb = Bomb()
-        #        bombs.add(new_bomb)
-        #        all_sprites.add(new_bomb)
-
-            # Should we add a new target?
+        # Should we add a new target?
         elif event.type == ADDTARGET:
             # Create the new target, and add it to our sprite groups
             pygame.time.set_timer(ADDTARGET, random.randint(100, 1000))
@@ -344,12 +330,7 @@ while running:
         # Stop the loop
         running = False'''
     
-    # Check if any bombs have hit the targets
-    if pygame.sprite.groupcollide():
-        # If so, remove the target
-        targets.kill()
-
-    counter += 1
+       counter += 1
     if counter %100 == 0:
         print(aircraft.rect.x)
         print(aircraft.rect.y)
